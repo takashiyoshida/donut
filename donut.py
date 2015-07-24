@@ -7,12 +7,30 @@ import time
 import urllib
 import urllib2
 
-def load_configuration():
-    with open('donut.json', 'r') as data:
-        config = json.load(data)
-    return config
+#
+# Load data from a JSON file
+#
+def load_json_file(filename):
+    try:
+        with open(filename, 'r') as infile:
+            data = json.load(infile)
+    except IOError as e:
+        pprint(str(e))
+        data = None
+    return data
 
 
+#
+# Save data to a JSON file
+#
+def save_json_file(filename, data):
+    with open(filename, 'w') as outfile:
+        json.dump(data, outfile)
+
+   
+#
+# Send notification to Pushover.net
+#
 def send_notification(message):
     proxies = {}
     
@@ -33,13 +51,19 @@ def send_notification(message):
         
     request = urllib2.Request(config['pushover']['url'], data=payload,
                               headers={'Content-type': 'application/x-www-form-urlencoded'})
-        
-    result = opener.open(request)
-    pprint(result.geturl())
-    pprint(str(result.info()))
-    pprint(result.getcode())
+    
+    try:
+        result = opener.open(request)
+        pprint(result.geturl())
+        pprint(str(result.info()))
+        pprint(result.getcode())
+    except urllib2.URLError as e:
+        pprint(str(e))
 
 
+#
+# Get Jenkins' job status from Jenkins server
+#
 def get_jenkins_job_status(job):
     url = "%s/%s/%s" % (config['jenkins']['url'], job, config['jenkins']['suffix'])
 
@@ -52,13 +76,16 @@ def get_jenkins_job_status(job):
         request = urllib2.Request(url)
         response = opener.open(request)
         data = json.loads(response.read())
-        pprint(data)
+        #pprint(data)
     except urllib2.HTTPError as e:
         pprint(str(e))
         pprint(url)
     return data
 
 
+#
+# Create a message to be sent as a notification
+#
 def construct_message(data):
     completeAt = datetime.fromtimestamp(data['timestamp'] / 1000)
     result = data['result']
@@ -69,16 +96,25 @@ def construct_message(data):
 
 
 if __name__ == "__main__":
-    config = load_configuration()
-
-    results = []
+    config = load_json_file('donut.json')
 
     for job in config['jenkins']['jobs']:
         data = get_jenkins_job_status(job)
         if data:
-            results.append(data)
-            message = construct_message(data)
-            send_notification(message)
-            time.sleep(5)
+            prevData = load_json_file("%s.json" % (job))
+            if prevData == None:
+                # No previous data so send this message
+                message = construct_message(data)
+                send_notification(message)
+            else:
+                if data['fullDisplayName'] != prevData['fullDisplayName']:
+                    message = construct_message(data)
+                    send_notification(message)
+                else:
+                    if data['building'] != prevData['building'] or data['result'] != prevData['result']:
+                        message = construct_message(data)
+                        send_notification(message)
 
-    pprint(results)
+            save_json_file("%s.json" % (job), data)
+
+        time.sleep(5)
