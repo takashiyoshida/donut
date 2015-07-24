@@ -42,8 +42,8 @@ Update configuration file, `donut.json`, before running `donut.py`.
     "enabled": "1",
     "url": "Your proxy URL",
     "port": "Port number for the proxy server",
-    "username": "',
-    "password": "",
+    "username": "Your proxy username",
+    "password": "Your proxy password",
   },
 
   "jenkins": {
