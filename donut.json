@@ -2,14 +2,22 @@
 	"pushover": {
 		"user_key": "user_key",
 		"api_token": "api_token",
-		"url": "pushover_url"
+		"url": "pushover_api_url"
 	},
 	
 	"proxy": {
-	    "enabled": "0",
+	  "enabled": "0",
 		"url": "proxy_url",
 		"port": "proxy_port",
-		"username": "username",
-		"password": "password"
-	}
+		"username": "proxy_username",
+		"password": "proxy_password"
+	},
+
+  "jenkins": {
+    "url": "jenkins_url",
+    "suffix": "lastBuild/api/json",
+    "jobs": ["jenkins_job1",
+             "jenkins_jobs2",
+             "jenkins_job3"]
+  }  
 }
