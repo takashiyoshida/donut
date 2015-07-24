@@ -15,7 +15,7 @@ Initial commit
 ## Installation
 
 - Requires Python 2.7+
-- Requires [Pushover.net][https://pushover.net] account to send notifications
+- Requires [Pushover.net](https://pushover.net) account to send notifications
 - Requires iOS or Android device with Pushover client (__NOT FREE__)
 - Requires a working proxy configuration in order to send notification to Pushover
 
