@@ -7,29 +7,31 @@ import time
 import urllib
 import urllib2
 
-def send_notification(message):
-    with open('donut.json', 'r') as config:
-        data = json.load(config)
-        #pprint(data)
+def load_configuration():
+    with open('donut.json', 'r') as data:
+        config = json.load(data)
+    return config
 
+
+def send_notification(message):
     proxies = {}
     
-    if data['proxy']['enabled'] == "1":
-        proxy_auth_url = "http://%s:%s@%s:%s" % (data['proxy']['username'],
-                                                 data['proxy']['password'],
-                                                 data['proxy']['url'],
-                                                 data['proxy']['port'])
+    if config['proxy']['enabled'] == "1":
+        proxy_auth_url = "http://%s:%s@%s:%s" % (config['proxy']['username'],
+                                                 config['proxy']['password'],
+                                                 config['proxy']['url'],
+                                                 config['proxy']['port'])
         pprint(proxy_auth_url)
         proxies = {'http': proxy_auth_url,
                    'https': proxy_auth_url}
 
     proxy_handler = urllib2.ProxyHandler(proxies)
     opener = urllib2.build_opener(proxy_handler)
-    payload = urllib.urlencode({'token': data['pushover']['api_token'],
-                                'user': data['pushover']['user_key'],
+    payload = urllib.urlencode({'token': config['pushover']['api_token'],
+                                'user': config['pushover']['user_key'],
                                 'message': message, })
         
-    request = urllib2.Request(data['pushover']['url'], data=payload,
+    request = urllib2.Request(config['pushover']['url'], data=payload,
                               headers={'Content-type': 'application/x-www-form-urlencoded'})
         
     result = opener.open(request)
@@ -39,7 +41,7 @@ def send_notification(message):
 
 
 def get_jenkins_job_status(job):
-    url = "%s/%s/%s" % (JENKINS_URL, job, URL_SUFFIX)
+    url = "%s/%s/%s" % (config['jenkins']['url'], job, config['jenkins']['suffix'])
 
     proxies = {}
     proxy_handler = urllib2.ProxyHandler({})
@@ -57,22 +59,26 @@ def get_jenkins_job_status(job):
     return data
 
 
+def construct_message(data):
+    completeAt = datetime.fromtimestamp(data['timestamp'] / 1000)
+    result = data['result']
+    if result == None and data['building'] == True:
+        result = "In progress"
+    message = "%s:\n%s at %s" % (data['fullDisplayName'], result.capitalize(), completeAt)
+    return message
+
+
 if __name__ == "__main__":
-    #send_notification('This is a test message')
-    proxies = {}
-    proxy_handler = urllib2.ProxyHandler({})
-    opener = urllib2.build_opener(proxy_handler)
+    config = load_configuration()
 
-    JENKINS_URL = 'http://10.216.10.221:8888/jenkins/view/C755A/job'
-    URL_SUFFIX = 'lastBuild/api/json'
+    results = []
 
-    # Add more jobs later
-    JOBS = ['C755A-Build-DatabaseRpmLinux']
-
-    for job in JOBS:
+    for job in config['jenkins']['jobs']:
         data = get_jenkins_job_status(job)
         if data:
-            duration = timedelta(seconds = data['duration'] / 1000)
-            completeAt = datetime.fromtimestamp(data['timestamp'] / 1000)
-            message = "%s:\n%s at %s" % (data['fullDisplayName'], data['result'], completeAt)
+            results.append(data)
+            message = construct_message(data)
             send_notification(message)
+            time.sleep(5)
+
+    pprint(results)
